@@ -1,0 +1,27 @@
+# Render Blueprint — API only (client/admin deploy on Vercel)
+# Dashboard: New → Blueprint → connect repo, or create Web Service manually with rootDir: server
+
+services:
+  - type: web
+    name: trump-bingo-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DB_SSL
+        value: true
+      - key: DB_LOGGING
+        value: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false

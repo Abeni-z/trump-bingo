@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TRUMP Bingo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // Clear stale service worker + cache on localhost so dev always loads fresh code
+      (function() {
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              regs.forEach(function(reg) { reg.unregister() })
+            })
+          }
+          if (window.caches) {
+            caches.keys().then(function(keys) {
+              keys.forEach(function(key) { caches.delete(key) })
+            })
+          }
+        }
+      })()
+    </script>
+    <script>
+      // Early DevTools prevention - executed before main app loads
+      (function() {
+        document.addEventListener('contextmenu', e => e.preventDefault())
+        document.addEventListener('keydown', e => {
+          if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || (e.ctrlKey && e.shiftKey && e.key === 'J') || (e.ctrlKey && e.shiftKey && e.key === 'C')) {
+            e.preventDefault()
+            e.stopPropagation()
+          }
+        })
+      })()
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
