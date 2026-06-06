@@ -22,17 +22,38 @@ async function apiFetch(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    throw new Error(`Cannot reach API at ${API_BASE}. Check VITE_API_URL and that Render is running.`);
+  }
 
   if (res.status === 401 || res.status === 403) {
+    const data = await res.json().catch(() => ({}));
+    if (path.includes('/login')) {
+      throw new Error(data.error || 'Invalid credentials');
+    }
     clearToken();
     window.location.hash = '#/login';
-    throw new Error('Unauthorized');
+    throw new Error(data.error || 'Unauthorized');
   }
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(data.error || 'Request failed');
+    const text = await res.text();
+    try {
+      const data = JSON.parse(text);
+      throw new Error(data.error || `Request failed (${res.status})`);
+    } catch (err) {
+      if (err.message && !err.message.startsWith('Request failed') && err.message !== 'Unexpected token') {
+        throw err;
+      }
+      throw new Error(
+        res.status === 404
+          ? `API not found (${API_BASE}). Use https://trump-bingo.onrender.com/api on Vercel.`
+          : `Request failed (${res.status}). Check VITE_API_URL and Render logs.`
+      );
+    }
   }
   return res.json();
 }

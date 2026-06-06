@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bingo-client-cache-v3';
+const CACHE_NAME = 'bingo-client-cache-v4';
 
 // Voice files that must be cached for offline gameplay
 const VOICE_FILES = [];
@@ -14,6 +14,9 @@ VOICE_FILES.push('/voices/not_registered.mp3');
 const PRECACHE_URLS = [
   '/',
   '/index.html',
+  '/manifest.json',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
   ...VOICE_FILES
 ];
 

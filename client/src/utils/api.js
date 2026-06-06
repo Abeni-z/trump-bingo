@@ -27,14 +27,16 @@ async function apiFetch(path, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    throw new Error(`Cannot reach API at ${API_BASE}. Check VITE_API_URL and that Render is running.`);
+  }
 
   // Handle deactivated shop
   if (res.status === 403) {
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (data.deactivated) {
       clearToken();
       localStorage.removeItem('bingo_shop');
@@ -44,8 +46,20 @@ async function apiFetch(path, options = {}) {
   }
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(data.error || 'Request failed');
+    const text = await res.text();
+    try {
+      const data = JSON.parse(text);
+      throw new Error(data.error || `Request failed (${res.status})`);
+    } catch (err) {
+      if (err.message && !err.message.startsWith('Request failed') && err.message !== 'Unexpected token') {
+        throw err;
+      }
+      throw new Error(
+        res.status === 404
+          ? `API not found (${API_BASE}). Use https://trump-bingo.onrender.com/api on Vercel.`
+          : `Request failed (${res.status}). Check VITE_API_URL and Render logs.`
+      );
+    }
   }
 
   return res.json();

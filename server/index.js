@@ -16,7 +16,7 @@ app.set('trust proxy', 1);
 
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:5174')
   .split(',')
-  .map((origin) => origin.trim())
+  .map((origin) => origin.trim().replace(/^["']|["']$/g, ''))
   .filter(Boolean);
 
 // Middleware
