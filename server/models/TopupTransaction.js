@@ -33,8 +33,11 @@ const TopupTransaction = sequelize.define('TopupTransaction', {
     allowNull: true
   },
   status: {
-    type: DataTypes.ENUM('pending', 'approved', 'rejected'),
-    defaultValue: 'pending'
+    type: DataTypes.STRING(20),
+    defaultValue: 'pending',
+    validate: {
+      isIn: [['pending', 'approved', 'rejected']]
+    }
   },
   admin_note: {
     type: DataTypes.TEXT,

@@ -63,9 +63,14 @@ async function start() {
     await sequelize.authenticate();
     console.log('✅ Database connected');
 
-    // Sync tables (creates if not exist)
-    await sequelize.sync({ alter: true });
-    console.log('✅ Tables synced');
+    // Production: tables already exist in Supabase — do not alter (enum casts fail).
+    // Development: allow alter for local schema tweaks.
+    if (process.env.NODE_ENV === 'production') {
+      console.log('✅ Production mode — skipping sequelize.sync()');
+    } else {
+      await sequelize.sync({ alter: true });
+      console.log('✅ Tables synced');
+    }
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
