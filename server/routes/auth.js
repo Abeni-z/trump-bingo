@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { Shop, Admin } = require('../models');
-const { generateToken } = require('../middleware/auth');
+const { generateToken, generateRefreshToken, verifyRefreshToken } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -14,7 +14,6 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
-    // Check if username or shop_name already exists
     const existingUser = await Shop.findOne({ where: { username } });
     if (existingUser) {
       return res.status(400).json({ error: 'Username already taken' });
@@ -27,12 +26,7 @@ router.post('/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const shop = await Shop.create({
-      shop_name,
-      username,
-      password: hashedPassword,
-      phone
-    });
+    await Shop.create({ shop_name, username, password: hashedPassword, phone });
 
     res.status(201).json({
       success: true,
@@ -67,10 +61,13 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = generateToken({ id: shop.id, username: shop.username, role: 'shop' });
+    const payload = { id: shop.id, username: shop.username, role: 'shop' };
+    const token = generateToken(payload);
+    const refreshToken = generateRefreshToken(payload);
 
     res.json({
       token,
+      refreshToken,
       shop: {
         id: shop.id,
         shop_name: shop.shop_name,
@@ -105,10 +102,13 @@ router.post('/admin/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = generateToken({ id: admin.id, username: admin.username, role: 'admin' });
+    const payload = { id: admin.id, username: admin.username, role: 'admin' };
+    const token = generateToken(payload);
+    const refreshToken = generateRefreshToken(payload);
 
     res.json({
       token,
+      refreshToken,
       admin: {
         id: admin.id,
         username: admin.username
@@ -117,6 +117,48 @@ router.post('/admin/login', async (req, res) => {
   } catch (err) {
     console.error('Admin login error:', err);
     res.status(500).json({ error: 'Server error during admin login' });
+  }
+});
+
+// POST /api/auth/refresh — Get new access token using refresh token
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'No refresh token provided' });
+    }
+
+    // Verify the refresh token
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(refreshToken);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    // Make sure the user still exists and is still active
+    if (decoded.role === 'shop') {
+      const shop = await Shop.findByPk(decoded.id);
+      if (!shop || !shop.is_active) {
+        return res.status(401).json({ error: 'Shop not found or deactivated' });
+      }
+    } else if (decoded.role === 'admin') {
+      const admin = await Admin.findByPk(decoded.id);
+      if (!admin) {
+        return res.status(401).json({ error: 'Admin not found' });
+      }
+    }
+
+    // Issue new access token and rotate refresh token
+    const payload = { id: decoded.id, username: decoded.username, role: decoded.role };
+    const newToken = generateToken(payload);
+    const newRefreshToken = generateRefreshToken(payload);
+
+    res.json({ token: newToken, refreshToken: newRefreshToken });
+  } catch (err) {
+    console.error('Refresh error:', err);
+    res.status(500).json({ error: 'Server error during token refresh' });
   }
 });
 

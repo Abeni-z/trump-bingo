@@ -5,8 +5,9 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'bingo_app_secret_key_2024';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'bingo_refresh_secret_key_2024';
 
-// Verify JWT token for shop users
+// Verify JWT access token
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -23,9 +24,23 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// Generate JWT token
-function generateToken(payload, expiresIn = '7d') {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+// Generate short-lived access token (1 day)
+function generateToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
 }
 
-module.exports = { authMiddleware, generateToken, JWT_SECRET };
+// Generate long-lived refresh token (30 days)
+function generateRefreshToken(payload) {
+  return jwt.sign(
+    { id: payload.id, username: payload.username, role: payload.role },
+    JWT_REFRESH_SECRET,
+    { expiresIn: '30d' }
+  );
+}
+
+// Verify refresh token
+function verifyRefreshToken(token) {
+  return jwt.verify(token, JWT_REFRESH_SECRET);
+}
+
+module.exports = { authMiddleware, generateToken, generateRefreshToken, verifyRefreshToken, JWT_SECRET };
