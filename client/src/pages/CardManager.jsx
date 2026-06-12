@@ -40,7 +40,11 @@ export default function CardManager() {
       </div>
 
       <div ref={printRef} style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:16}}>
-        {cards.map(card => (
+        {[...cards].sort((a, b) => {
+          const numA = parseInt(a.name.match(/\d+/)?.[0] ?? '0')
+          const numB = parseInt(b.name.match(/\d+/)?.[0] ?? '0')
+          return numA - numB
+        }).map(card => (
           <EditableCardTile key={card.id} card={card} onRemove={() => removeCard(card.id)} onSave={updateCard} />
         ))}
         {cards.length === 0 && (

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bingo-client-cache-v4';
+const CACHE_NAME = 'bingo-client-cache-v5';
 
 // Voice files that must be cached for offline gameplay
 const VOICE_FILES = [];
@@ -9,6 +9,7 @@ VOICE_FILES.push('/voices/begning.mp3');
 VOICE_FILES.push('/voices/winner.mp3');
 VOICE_FILES.push('/voices/not_winner.mp3');
 VOICE_FILES.push('/voices/not_registered.mp3');
+VOICE_FILES.push('/voices/shuffle.mp3');
 
 // Core files to precache on install
 const PRECACHE_URLS = [
@@ -45,7 +46,7 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Fetch: network-first for API calls, cache-first for everything else
+// Fetch: network-first for index.html/root and API calls, cache-first for other assets
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
@@ -61,7 +62,25 @@ self.addEventListener('fetch', event => {
   // Never intercept admin dashboard requests
   if (url.pathname.startsWith('/admin')) return;
 
-  // For everything else (client app): cache-first strategy
+  // For index.html or root page: network-first strategy to get updates instantly
+  if (url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        if (response && response.status === 200) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return response;
+      }).catch(() => {
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
+
+  // For everything else (client app assets, voices): cache-first strategy
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {

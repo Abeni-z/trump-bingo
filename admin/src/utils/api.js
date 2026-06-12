@@ -22,38 +22,17 @@ async function apiFetch(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  let res;
-  try {
-    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  } catch {
-    throw new Error(`Cannot reach API at ${API_BASE}. Check VITE_API_URL and that Render is running.`);
-  }
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (res.status === 401 || res.status === 403) {
-    const data = await res.json().catch(() => ({}));
-    if (path.includes('/login')) {
-      throw new Error(data.error || 'Invalid credentials');
-    }
     clearToken();
     window.location.hash = '#/login';
-    throw new Error(data.error || 'Unauthorized');
+    throw new Error('Unauthorized');
   }
 
   if (!res.ok) {
-    const text = await res.text();
-    try {
-      const data = JSON.parse(text);
-      throw new Error(data.error || `Request failed (${res.status})`);
-    } catch (err) {
-      if (err.message && !err.message.startsWith('Request failed') && err.message !== 'Unexpected token') {
-        throw err;
-      }
-      throw new Error(
-        res.status === 404
-          ? `API not found (${API_BASE}). Use https://trump-bingo.onrender.com/api on Vercel.`
-          : `Request failed (${res.status}). Check VITE_API_URL and Render logs.`
-      );
-    }
+    const data = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(data.error || 'Request failed');
   }
   return res.json();
 }
@@ -95,6 +74,13 @@ export async function updateShopBalance(id, balance) {
 
 export async function deleteShop(id) {
   return apiFetch(`/admin/shops/${id}`, { method: 'DELETE' });
+}
+
+export async function updateShopReport(id, payload) {
+  return apiFetch(`/admin/shops/${id}/report`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
 }
 
 // Topups

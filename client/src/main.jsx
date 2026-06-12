@@ -5,6 +5,9 @@ import App from './App.jsx'
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/700.css'
 import '@fontsource/inter/900.css'
+import '@fontsource/nunito/400.css'
+import '@fontsource/nunito/700.css'
+import '@fontsource/nunito/900.css'
 import './index.css'
 
 // ========== PREVENT CODE INSPECTION & DEVTOOLS ==========
@@ -80,13 +83,32 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 )
 
-// Service worker uses cache-first — disable in dev so Vite hot reload works
+// Service worker updates: check on load and periodically, reload tab when new SW takes control
 if ('serviceWorker' in navigator) {
   if (import.meta.env.DEV) {
     navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(reg => reg.unregister()))
   } else {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-    })
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        // Check for updates on initial register
+        reg.update().catch(() => {});
+        
+        // Check for updates periodically (every 5 minutes)
+        setInterval(() => {
+          reg.update().catch(() => {});
+        }, 5 * 60 * 1000);
+      }).catch(err => {
+        console.error('[SW] Registration failed:', err);
+      });
+    });
+
+    // Auto-reload current page when a new service worker starts controlling the client
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
   }
 }

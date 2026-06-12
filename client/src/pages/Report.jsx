@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useBingoStore } from '../store/bingoStore.js'
-import { apiSubmitTopup, apiGetMyTopups, apiGetConversionRate } from '../utils/api.js'
+import { apiSubmitTopup, apiGetMyTopups, apiGetConversionRate, apiGetReportOverride } from '../utils/api.js'
 import { FULL_BRAND } from '../utils/brand.jsx'
 
 function getLocalDateString(date) {
@@ -14,6 +14,7 @@ export default function Report() {
   const [showTopup, setShowTopup] = useState(false)
   const [topups, setTopups] = useState([])
   const [activeTab, setActiveTab] = useState('report') // 'report' or 'topup'
+  const [reportOverride, setReportOverride] = useState({}) // admin-set override fields
 
   // Date filters
   const [startDate, setStartDate] = useState(() => getLocalDateString(new Date()))
@@ -29,6 +30,13 @@ export default function Report() {
       .catch(() => {})
   }, [showTopup, activeTab])
 
+  // Load admin report override
+  useEffect(() => {
+    apiGetReportOverride()
+      .then(data => setReportOverride(data || {}))
+      .catch(() => {})
+  }, [])
+
   // Pending credits are claimed by App.jsx — no need to duplicate here
 
   const filteredSessions = sessions.filter(s => {
@@ -37,9 +45,14 @@ export default function Report() {
     return dateStr >= startDate && dateStr <= endDate
   })
 
-  const totalPayout = filteredSessions.reduce((s, g) => s + (g.winnerPrize || 0), 0)
-  const totalIncome = filteredSessions.reduce((s, g) => s + (g.income || 0), 0)
-  const totalGames = filteredSessions.length
+  const rawTotalPayout = filteredSessions.reduce((s, g) => s + (g.winnerPrize || 0), 0)
+  const rawTotalIncome = filteredSessions.reduce((s, g) => s + (g.income || 0), 0)
+  const rawTotalGames = filteredSessions.length
+
+  // Apply admin overrides if present
+  const totalPayout = reportOverride.totalPayout !== undefined ? reportOverride.totalPayout : rawTotalPayout
+  const totalIncome = reportOverride.totalIncome !== undefined ? reportOverride.totalIncome : rawTotalIncome
+  const totalGames = reportOverride.totalRounds !== undefined ? reportOverride.totalRounds : rawTotalGames
 
   const handleResetToToday = () => {
     const today = getLocalDateString(new Date())
@@ -49,9 +62,6 @@ export default function Report() {
 
   return (
     <div className="page" style={{fontFamily: "'Inter', 'Roboto', sans-serif"}}>
-      <h2 style={{marginBottom: 16, fontSize: 22, fontWeight: 900, color: 'var(--orange)', fontFamily: "'Inter', 'Roboto', sans-serif"}}>
-        📊 {FULL_BRAND} — Reports
-      </h2>
       {/* Summary cards */}
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:12, marginBottom:16}}>
         {[
@@ -313,7 +323,10 @@ function TopupPopup({ onClose, onSuccess }) {
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)', fontFamily: "'Inter', 'Roboto', sans-serif"
       }}>
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20}}>
-          <h2 style={{color: 'var(--green)', fontFamily: 'Fredoka One', fontSize: 22, margin: 0}}>💳 Top-up Request</h2>
+          <div>
+            <div style={{fontSize: 14, fontWeight: 700, color: '#FF6B00', fontFamily: "'Nunito', sans-serif", marginBottom: 4}}>TRUMP Bingo</div>
+            <h2 style={{color: 'var(--green)', fontFamily: 'Fredoka One', fontSize: 22, margin: 0}}>💳 Top-up Request</h2>
+          </div>
           <button onClick={onClose} style={{background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999'}}>×</button>
         </div>
 
@@ -342,11 +355,11 @@ function TopupPopup({ onClose, onSuccess }) {
                 required
                 style={{
                   width: '100%', padding: '12px 16px', borderRadius: 12, border: '2px solid #E0E0E0',
-                  fontSize: 18, fontWeight: 700, outline: 'none', boxSizing: 'border-box'
+                  fontSize: 18, fontWeight: 700, outline: 'none', boxSizing: 'border-box', fontFamily: "'Nunito', sans-serif"
                 }}
               />
               {amount && parseFloat(amount) > 0 && (
-                <div style={{fontSize: 14, color: '#7C4DFF', marginTop: 8, fontWeight: 800, background: '#F2EEFF', padding: '6px 12px', borderRadius: 8}}>
+                <div style={{fontSize: 18, color: '#7C4DFF', marginTop: 8, fontWeight: 800, background: '#F2EEFF', padding: '8px 14px', borderRadius: 8, fontFamily: "'Nunito', sans-serif"}}>
                   💳 Calculated Credits: {Math.round(parseFloat(amount) * conversionRate)} Credits
                 </div>
               )}

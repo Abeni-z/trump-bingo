@@ -63,6 +63,15 @@ async function start() {
     await sequelize.authenticate();
     console.log('✅ Database connected');
 
+    // Alter app_settings table columns to avoid key/value truncation/errors
+    try {
+      await sequelize.query('ALTER TABLE app_settings ALTER COLUMN key TYPE VARCHAR(255);');
+      await sequelize.query('ALTER TABLE app_settings ALTER COLUMN value TYPE TEXT;');
+      console.log('✅ app_settings columns altered successfully');
+    } catch (dbErr) {
+      console.log('⚠️ Could not alter app_settings columns (might already be altered or SQLite/other DB):', dbErr.message);
+    }
+
     // Production: tables already exist in Supabase — do not alter (enum casts fail).
     // Development: allow alter for local schema tweaks.
     if (process.env.NODE_ENV === 'production') {

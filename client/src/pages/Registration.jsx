@@ -13,17 +13,55 @@ export default function Registration() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const profileRef = useRef(null)
+  const settingsRef = useRef(null)
+  const settingsButtonRef = useRef(null)
 
-  // Close profile dropdown on outside click
+  // Clean up any stale active game state when entering the registration page
+  useEffect(() => {
+    const store = useBingoStore.getState()
+    if (store.gameActive) {
+      store.endGame(null)
+    }
+  }, [])
+
+  // Close profile and settings dropdowns on outside click
   useEffect(() => {
     function handleClick(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
         setProfileOpen(false)
       }
+      if (settingsRef.current && !settingsRef.current.contains(e.target) && settingsButtonRef.current && !settingsButtonRef.current.contains(e.target)) {
+        setSettingsOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  // Calculate rounds played today (same timing/filters as Report page)
+  const sessions = useBingoStore(s => s.sessions)
+  const [roundsToday, setRoundsToday] = useState(0)
+
+  useEffect(() => {
+    function getLocalDateString(date) {
+      const offset = date.getTimezoneOffset()
+      const localDate = new Date(date.getTime() - (offset * 60 * 1000))
+      return localDate.toISOString().split('T')[0]
+    }
+
+    const updateCount = () => {
+      const today = getLocalDateString(new Date())
+      const activeToday = sessions.filter(s => {
+        if ((s.numPlayers || 0) < 3) return false
+        const dateStr = getLocalDateString(new Date(s.date))
+        return dateStr === today
+      })
+      setRoundsToday(activeToday.length)
+    }
+    updateCount()
+    const interval = setInterval(updateCount, 10000)
+    return () => clearInterval(interval)
+  }, [sessions])
 
   const registeredCount = registeredCardIds.length
 
@@ -67,10 +105,28 @@ export default function Registration() {
           <BrandMark size={26} color="white" />
           <span style={{fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 700}}>Card Registration</span>
         </div>
+
+        {/* Center: Yellow card rounds indicator */}
+        <div style={{
+          background: 'var(--yellow)',
+          color: '#1A1A2E',
+          padding: '8px 16px',
+          borderRadius: 12,
+          fontWeight: 800,
+          fontSize: 13,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontFamily: "'Inter', 'Roboto', sans-serif"
+        }}>
+          {language === 'am' ? `ዙር: ${roundsToday}` : `Round: ${roundsToday}`}
+        </div>
+
         <div style={{display: 'flex', alignItems: 'center', gap: 16}}>
 
           {/* Settings toggle */}
-          <button onClick={() => setSettingsOpen(v => !v)}
+          <button ref={settingsButtonRef} onClick={() => setSettingsOpen(v => !v)}
             style={{background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'rgba(255,255,255,0.85)', transition: 'color 0.2s'}}
             onMouseOver={e => e.target.style.color = '#fff'}
             onMouseOut={e => e.target.style.color = 'rgba(255,255,255,0.85)'}>
@@ -124,57 +180,45 @@ export default function Registration() {
         </div>
       </div>
 
-      {/* Settings — tap anywhere on screen to close */}
+      {/* Settings panel */}
       {settingsOpen && (
-        <>
-          <div
-            className="settings-backdrop"
-            onClick={() => setSettingsOpen(false)}
-            onTouchEnd={() => setSettingsOpen(false)}
-            aria-hidden="true"
-          />
-          <div
-            className="settings-panel"
-            onClick={e => e.stopPropagation()}
-            onTouchEnd={e => e.stopPropagation()}
-          >
-            <div style={{display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: 8}}>
-              <span style={{fontWeight: 900, color: 'var(--orange)', fontFamily: "'Inter', 'Roboto', sans-serif"}}>Settings</span>
-              <button onClick={() => setSettingsOpen(false)} style={{background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', lineHeight: 1}}>×</button>
-            </div>
-            <label style={{display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700}}>
-              Language
-              <select value={language} onChange={e => setLanguage(e.target.value)}
-                style={{background: 'white', color: 'var(--text)', border: '2px solid #E0E0E0', borderRadius: 10, padding: '6px 10px', fontSize: 13}}>
-                <option value="en">English</option>
-                <option value="am">Amharic</option>
-              </select>
-            </label>
-            <label style={{display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700}}>
-              Voice
-              <input type="checkbox" checked={voiceEnabled} onChange={e => setVoiceEnabled(e.target.checked)} />
-              <span style={{color: voiceEnabled ? '#00C853' : '#888'}}>{voiceEnabled ? 'ON' : 'OFF'}</span>
-            </label>
-            <label style={{display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700}}>
-              House %
-              <select value={houseBetMode ? 'oneBet' : housePercent} onChange={e => {
-                  const v = e.target.value
-                  if (v === 'oneBet') {
-                    setHouseBetMode(true)
-                  } else {
-                    setHouseBetMode(false)
-                    setHousePercent(Number(v))
-                  }
-                }}
-                style={{background: 'white', color: 'var(--text)', border: '2px solid #E0E0E0', borderRadius: 10, padding: '6px 10px', fontSize: 13}}>
-                <option value="oneBet">1Bet</option>
-                {[10,20,25,30,40].map(p => (
-                  <option key={p} value={p}>{p}%</option>
-                ))}
-              </select>
-            </label>
+        <div ref={settingsRef} className="settings-panel">
+          <div style={{display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: 8}}>
+            <span style={{fontWeight: 900, color: 'var(--orange)', fontFamily: "'Inter', 'Roboto', sans-serif"}}>Settings</span>
+            <button onClick={() => setSettingsOpen(false)} style={{background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', lineHeight: 1}}>×</button>
           </div>
-        </>
+          <label style={{display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700}}>
+            Language
+            <select value={language} onChange={e => setLanguage(e.target.value)}
+              style={{background: 'white', color: 'var(--text)', border: '2px solid #E0E0E0', borderRadius: 10, padding: '6px 10px', fontSize: 13}}>
+              <option value="en">English</option>
+              <option value="am">Amharic</option>
+            </select>
+          </label>
+          <label style={{display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700}}>
+            Voice
+            <input type="checkbox" checked={voiceEnabled} onChange={e => setVoiceEnabled(e.target.checked)} />
+            <span style={{color: voiceEnabled ? '#00C853' : '#888'}}>{voiceEnabled ? 'ON' : 'OFF'}</span>
+          </label>
+          <label style={{display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700}}>
+            House %
+            <select value={houseBetMode ? 'oneBet' : housePercent} onChange={e => {
+                const v = e.target.value
+                if (v === 'oneBet') {
+                  setHouseBetMode(true)
+                } else {
+                  setHouseBetMode(false)
+                  setHousePercent(Number(v))
+                }
+              }}
+              style={{background: 'white', color: 'var(--text)', border: '2px solid #E0E0E0', borderRadius: 10, padding: '6px 10px', fontSize: 13}}>
+              <option value="oneBet">1Bet</option>
+              {[15,20,25,30,35,40].map(p => (
+                <option key={p} value={p}>{p}%</option>
+              ))}
+            </select>
+          </label>
+        </div>
       )}
 
       {balance <= 0 && (
@@ -278,7 +322,7 @@ export default function Registration() {
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(10, 1fr)',
-              gap: 8
+              gap: 4
             }}>
               {[...cards].sort((a, b) => getCardNumber(a) - getCardNumber(b)).map(card => {
                 const isSelected = registeredCardIds.includes(card.id)
@@ -293,19 +337,20 @@ export default function Registration() {
                       toggleRegisterCard(card.id)
                     }}
                     style={{
-                      width: '75%',
+                      width: '100%',
                       aspectRatio: '1',
-                      margin: '0 auto',
+                      margin: 0,
                       borderRadius: '50%',
-                      border: isSelected ? '2px solid var(--orange)' : '2px solid #E0E0E0',
+                      border: isSelected ? '3px solid var(--orange)' : '2px solid #E0E0E0',
                       background: balance <= 0 ? '#F5F5F5' : (isSelected ? 'var(--orange)' : 'white'),
                       color: balance <= 0 ? '#999' : (isSelected ? 'white' : 'var(--text)'),
-                      fontSize: 28,
-                      fontWeight: 900,
-                      fontFamily: "'Inter', 'Roboto', sans-serif",
+                      fontSize: 48,
+                      fontWeight: 700,
+                      fontFamily: "'Nunito', sans-serif",
+                      letterSpacing: '0',
                       cursor: balance <= 0 ? 'not-allowed' : 'pointer',
                       transition: 'all 0.15s',
-                      boxShadow: isSelected && balance > 0 ? '0 4px 12px rgba(255,107,0,0.3)' : '0 2px 6px rgba(0,0,0,0.06)',
+                      boxShadow: isSelected && balance > 0 ? '0 4px 16px rgba(255,107,0,0.4)' : '0 2px 6px rgba(0,0,0,0.08)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

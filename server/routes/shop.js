@@ -1,5 +1,5 @@
 const express = require('express');
-const { Shop } = require('../models');
+const { Shop, AppSetting } = require('../models');
 const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
@@ -71,6 +71,21 @@ router.post('/claim-credits', authMiddleware, async (req, res) => {
       return res.status(err.status).json({ error: err.message, deactivated: err.deactivated });
     }
     console.error('Claim pending credits error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/shop/report-override — Fetch admin-set report override for this shop
+// Returns { totalRounds, totalPayout, totalIncome } (only the fields admin has set)
+router.get('/report-override', authMiddleware, async (req, res) => {
+  try {
+    const settingKey = `report_override:${req.user.id}`;
+    const setting = await AppSetting.findByPk(settingKey);
+    if (!setting) return res.json({});
+    const override = JSON.parse(setting.value);
+    res.json(override);
+  } catch (err) {
+    console.error('Report override fetch error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

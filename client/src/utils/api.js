@@ -1,8 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 export const API_ORIGIN = API_BASE.replace(/\/api\/?$/, '');
 
-// ===== TOKEN HELPERS =====
-
 function getToken() {
   return localStorage.getItem('bingo_token');
 }
@@ -11,56 +9,15 @@ function setToken(token) {
   localStorage.setItem('bingo_token', token);
 }
 
-function getRefreshToken() {
-  return localStorage.getItem('bingo_refresh_token');
-}
-
-function setRefreshToken(token) {
-  localStorage.setItem('bingo_refresh_token', token);
-}
-
-function clearTokens() {
+function clearToken() {
   localStorage.removeItem('bingo_token');
-  localStorage.removeItem('bingo_refresh_token');
-  localStorage.removeItem('bingo_shop');
 }
 
-// ===== REFRESH LOGIC =====
-
-let isRefreshing = false;         // prevent multiple simultaneous refresh calls
-let refreshQueue = [];            // queue requests that came in while refreshing
-
-function processQueue(error, token = null) {
-  refreshQueue.forEach(({ resolve, reject }) => {
-    if (error) reject(error);
-    else resolve(token);
-  });
-  refreshQueue = [];
-}
-
-async function refreshAccessToken() {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) throw new Error('No refresh token');
-
-  const res = await fetch(`${API_BASE}/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken })
-  });
-
-  if (!res.ok) throw new Error('Refresh failed');
-
-  const data = await res.json();
-  setToken(data.token);
-  setRefreshToken(data.refreshToken); // rotate refresh token
-  return data.token;
-}
-
-// ===== CORE FETCH =====
-
-async function apiFetch(path, options = {}, retry = true) {
+async function apiFetch(path, options = {}) {
   const token = getToken();
-  const headers = { ...options.headers };
+  const headers = {
+    ...options.headers
+  };
 
   if (!headers['Content-Type'] && !(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
@@ -70,45 +27,19 @@ async function apiFetch(path, options = {}, retry = true) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers
+  });
 
   // Handle deactivated shop
   if (res.status === 403) {
     const data = await res.json();
     if (data.deactivated) {
-      clearTokens();
+      clearToken();
+      localStorage.removeItem('bingo_shop');
       window.location.hash = '#/login';
       throw new Error('Shop deactivated');
-    }
-  }
-
-  // Access token expired — try to refresh silently
-  if (res.status === 401 && retry) {
-    if (isRefreshing) {
-      // Another request is already refreshing — wait in queue
-      return new Promise((resolve, reject) => {
-        refreshQueue.push({ resolve, reject });
-      }).then((newToken) => {
-        headers['Authorization'] = `Bearer ${newToken}`;
-        return fetch(`${API_BASE}${path}`, { ...options, headers }).then(r => r.json());
-      });
-    }
-
-    isRefreshing = true;
-
-    try {
-      const newToken = await refreshAccessToken();
-      processQueue(null, newToken);
-      isRefreshing = false;
-      // Retry original request with new token — retry=false to avoid infinite loop
-      return apiFetch(path, options, false);
-    } catch (err) {
-      processQueue(err);
-      isRefreshing = false;
-      // Refresh token also expired — force logout
-      clearTokens();
-      window.location.hash = '#/login';
-      throw new Error('Session expired. Please log in again.');
     }
   }
 
@@ -128,7 +59,6 @@ export async function apiLogin(username, password) {
     body: JSON.stringify({ username, password })
   });
   setToken(data.token);
-  setRefreshToken(data.refreshToken);
   localStorage.setItem('bingo_shop', JSON.stringify(data.shop));
   return data;
 }
@@ -141,7 +71,8 @@ export async function apiRegister(shop_name, username, password, phone) {
 }
 
 export function apiLogout() {
-  clearTokens();
+  clearToken();
+  localStorage.removeItem('bingo_shop');
 }
 
 export function isLoggedIn() {
@@ -160,7 +91,9 @@ export async function apiGetProfile() {
 }
 
 export async function apiClaimPendingCredits() {
-  return apiFetch('/shop/claim-credits', { method: 'POST' });
+  return apiFetch('/shop/claim-credits', {
+    method: 'POST'
+  });
 }
 
 // ===== TOP-UP =====
@@ -210,4 +143,8 @@ export async function apiGetConversionRate() {
   return res.json();
 }
 
-export { getToken, setToken, clearTokens as clearToken };
+export async function apiGetReportOverride() {
+  return apiFetch('/shop/report-override');
+}
+
+export { getToken, setToken, clearToken };

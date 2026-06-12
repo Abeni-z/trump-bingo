@@ -3,11 +3,11 @@ const sequelize = require('../config/database');
 
 const AppSetting = sequelize.define('AppSetting', {
   key: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(255),
     primaryKey: true
   },
   value: {
-    type: DataTypes.STRING(255),
+    type: DataTypes.TEXT,
     allowNull: false
   }
 }, {

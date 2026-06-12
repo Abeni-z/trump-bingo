@@ -280,9 +280,11 @@ export const useBingoStore = create((set, get) => ({
   resetLocked: () => set({ lockedCardIds: [] }),
 
   startGame: () => {
-    const { registeredCardIds, betAmount, housePercent, houseBetMode, balance, gameActive } = get()
-    if (gameActive) return false
+    if (get().gameActive) {
+      get().endGame(null)
+    }
 
+    const { registeredCardIds, betAmount, housePercent, houseBetMode, balance } = get()
     const numPlayers = registeredCardIds.length
     if (numPlayers < 3) return false
 

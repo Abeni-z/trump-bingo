@@ -98,14 +98,6 @@ function Nav() {
         <NavLink to="/">Home</NavLink>
         <NavLink to="/cards">Cards</NavLink>
         <NavLink to="/report">Report</NavLink>
-        {shopInfo && (
-          <span style={{
-            fontSize: 12, color: 'rgba(255,255,255,0.7)', padding: '6px 10px',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
-            🏪 {shopInfo.shop_name}
-          </span>
-        )}
         <button onClick={handleLogout} style={{background: 'rgba(244,67,54,0.8)'}}>
           🚪 Logout
         </button>

@@ -131,6 +131,54 @@ router.delete('/shops/:id', async (req, res) => {
   }
 });
 
+// PUT /api/admin/shops/:id/report — Override game report stats for a specific shop
+// Stores per-shop overrides in app_settings as JSON: key = "report_override:<shopId>"
+// Client reads this via GET /api/shop/report-override and merges into local stats.
+router.put('/shops/:id/report', async (req, res) => {
+  try {
+    const { totalRounds, totalPayout, totalIncome } = req.body;
+    const shop = await Shop.findByPk(req.params.id);
+    if (!shop) return res.status(404).json({ error: 'Shop not found' });
+
+    // Validate provided fields
+    const override = {};
+    if (totalRounds !== undefined) {
+      const v = parseInt(totalRounds);
+      if (isNaN(v) || v < 0) return res.status(400).json({ error: 'totalRounds must be a non-negative integer' });
+      override.totalRounds = v;
+    }
+    if (totalPayout !== undefined) {
+      const v = parseFloat(totalPayout);
+      if (isNaN(v) || v < 0) return res.status(400).json({ error: 'totalPayout must be a non-negative number' });
+      override.totalPayout = v;
+    }
+    if (totalIncome !== undefined) {
+      const v = parseFloat(totalIncome);
+      if (isNaN(v) || v < 0) return res.status(400).json({ error: 'totalIncome must be a non-negative number' });
+      override.totalIncome = v;
+    }
+
+    if (Object.keys(override).length === 0) {
+      return res.status(400).json({ error: 'No valid fields provided' });
+    }
+
+    const settingKey = `report_override:${shop.id}`;
+
+    // Merge with existing override (so partial updates don't clear other fields)
+    const existing = await AppSetting.findByPk(settingKey);
+    const existingData = existing ? JSON.parse(existing.value) : {};
+    const merged = { ...existingData, ...override };
+
+    await AppSetting.upsert({ key: settingKey, value: JSON.stringify(merged) });
+
+    console.log(`[REPORT-OVERRIDE] Shop ${shop.id} (${shop.shop_name}): set override`, merged);
+    res.json({ shopId: shop.id, override: merged, message: 'Report override saved' });
+  } catch (err) {
+    console.error('Report override error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ===== TOP-UP MANAGEMENT =====
 
 // GET /api/admin/topups — List all top-up requests
