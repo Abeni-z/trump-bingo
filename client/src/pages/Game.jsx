@@ -79,7 +79,7 @@ export default function Game() {
 
   function handlePlayPause() {
     if (!autoMode) {
-      if (voiceEnabled && calledNumbers.length === 0) playSpecialVoice('begning')
+      playSpecialVoice('begning')
       setHasPlayed(true)
       setAutoMode(true)
     } else {
@@ -145,7 +145,9 @@ export default function Game() {
       minHeight: '100vh',
       fontFamily: "'Bebas Neue', 'Fredoka One', 'Inter', sans-serif",
       display: 'flex', flexDirection: 'column',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      paddingTop: 12,
+      paddingBottom: 12
     }}>
 
       {/* TOP SECTION: Indicators — NO orange header */}
@@ -157,7 +159,7 @@ export default function Game() {
         {/* Current ball — bigger circle */}
         <div className="card" style={{
           background: lastCalled ? COL_COLORS[['B', 'I', 'N', 'G', 'O'].indexOf(letter)] : 'var(--card-bg)',
-          width: 110, height: 110, borderRadius: '50%',
+          width: 140, height: 140, borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           animation: lastCalled ? 'pop 0.4s ease' : 'none',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -165,7 +167,7 @@ export default function Game() {
           padding: 0
         }}>
           <div style={{
-            fontSize: 42, fontWeight: 700,
+            fontSize: 54, fontWeight: 900,
             color: lastCalled ? 'white' : 'var(--text-muted)',
             lineHeight: 1, fontFamily: "'Nunito', sans-serif",
             whiteSpace: 'nowrap'
@@ -177,31 +179,31 @@ export default function Game() {
         {/* Recent calls & Stats — bigger */}
         <div className="card" style={{
           flex: 1, minWidth: 200, display: 'flex',
-          alignItems: 'center', padding: '6px 10px', gap: 10
+          alignItems: 'center', padding: '8px 12px', gap: 12
         }}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 5, fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>Recent Calls</div>
+            <div style={{ fontSize: 15, color: 'var(--text-muted)', marginBottom: 5, fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Recent Calls</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {[...calledNumbers].reverse().slice(0, 15).map(n => (
                 <span key={n} style={{
                   background: COL_COLORS[Math.floor((n - 1) / 15)],
-                  color: 'white', borderRadius: '50%', width: 44, height: 44,
+                  color: 'white', borderRadius: '50%', width: 52, height: 52,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 20, fontWeight: 700, fontFamily: "'Nunito', sans-serif"
+                  fontSize: 24, fontWeight: 900, fontFamily: "'Nunito', sans-serif"
                 }}>{n}</span>
               ))}
-              {calledNumbers.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>No numbers called yet</span>}
+              {calledNumbers.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 15, fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>No numbers called yet</span>}
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, borderLeft: '2px solid #E0E0E0', paddingLeft: 14 }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 30, fontWeight: 700, color: 'var(--orange)', fontFamily: "'Nunito', sans-serif" }}>{calledNumbers.length}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>Called</div>
+              <div style={{ fontSize: 36, fontWeight: 900, color: 'var(--orange)', fontFamily: "'Nunito', sans-serif" }}>{calledNumbers.length}</div>
+              <div style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Called</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--blue)', fontFamily: "'Nunito', sans-serif" }}>{75 - calledNumbers.length}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>Remaining</div>
+              <div style={{ fontSize: 34, fontWeight: 900, color: 'var(--blue)', fontFamily: "'Nunito', sans-serif" }}>{75 - calledNumbers.length}</div>
+              <div style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Remaining</div>
             </div>
           </div>
         </div>
@@ -210,16 +212,16 @@ export default function Game() {
         <div className="card" style={{
           background: '#000',
           border: '3px solid #00C853',
-          width: 110, height: 110, borderRadius: '50%',
+          width: 140, height: 140, borderRadius: '50%',
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           flexShrink: 0,
           padding: 0
         }}>
-          <div style={{ fontSize: 12, color: '#E0E0E0', fontWeight: 700, marginBottom: 2, fontFamily: "'Inter', sans-serif", letterSpacing: '0.5px' }}>ደራሽ</div>
+          <div style={{ fontSize: 14, color: '#E0E0E0', fontWeight: 800, marginBottom: 2, fontFamily: "'Inter', sans-serif", letterSpacing: '0.5px' }}>ደራሽ</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-            <div style={{ fontSize: 38, fontWeight: 700, color: '#fff', fontFamily: "'Nunito', sans-serif", lineHeight: 1.1 }}>{winnerPrize}</div>
-            <div style={{ fontSize: 17, color: '#FFD700', fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>ብር</div>
+            <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', fontFamily: "'Nunito', sans-serif", lineHeight: 1.1 }}>{winnerPrize}</div>
+            <div style={{ fontSize: 20, color: '#FFD700', fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>ብር</div>
           </div>
         </div>
       </div>
@@ -273,10 +275,10 @@ export default function Game() {
               display: flex;
               align-items: center;
               justify-content: center;
-              border-radius: 6px;
+              border-radius: 0;
               height: 100%;
               font-family: 'Nunito', sans-serif;
-              font-weight: 700;
+              font-weight: 900;
               font-size: clamp(28px, 4vw, 52px);
               color: #fff;
               line-height: 1;
