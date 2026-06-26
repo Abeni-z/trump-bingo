@@ -26,6 +26,34 @@ function getShuffleCellState(number, frame) {
   }
 }
 
+function getCardProgress(flatCard, calledSet) {
+  const hit = flatCard.map(v => v === 'FREE' || calledSet.has(v))
+  const patterns = []
+  
+  // 5 rows
+  for (let r = 0; r < 5; r++) {
+    patterns.push([0,1,2,3,4].map(c => r*5+c))
+  }
+  // 5 cols
+  for (let c = 0; c < 5; c++) {
+    patterns.push([0,1,2,3,4].map(r => r*5+c))
+  }
+  // diagonals
+  patterns.push([0,6,12,18,24])
+  patterns.push([4,8,12,16,20])
+  // four corners
+  patterns.push([0,4,20,24])
+
+  let minRemaining = 5
+  for (const cells of patterns) {
+    const unhitCount = cells.filter(i => !hit[i]).length
+    if (unhitCount < minRemaining) {
+      minRemaining = unhitCount
+    }
+  }
+  return minRemaining
+}
+
 export default function Game() {
   const navigate = useNavigate()
   const { language, voiceEnabled, callSpeed, setCallSpeed, betAmount, housePercent, houseBetMode, calledNumbers, lastCalled, gameActive, callRandom, endGame, cards, registeredCardIds, lockedCardIds, lockCard, resetLocked } = useBingoStore()
@@ -34,6 +62,7 @@ export default function Game() {
   const [shuffling, setShuffling] = useState(false)
   const [shuffleFrame, setShuffleFrame] = useState(0)
   const [hasPlayed, setHasPlayed] = useState(calledNumbers.length > 0)
+  const [showProgress, setShowProgress] = useState(true)
   const autoRef = useRef(null)
   const autoModeRef = useRef(false)
   const shuffleSoundStopRef = useRef(null)
@@ -161,51 +190,134 @@ export default function Game() {
           background: lastCalled ? COL_COLORS[['B', 'I', 'N', 'G', 'O'].indexOf(letter)] : 'var(--card-bg)',
           width: 140, height: 140, borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          animation: lastCalled ? 'pop 0.4s ease' : 'none',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          border: lastCalled ? '6px solid #00C853' : '6px solid #484848',
+          boxSizing: 'border-box',
           flexShrink: 0,
           padding: 0
         }}>
-          <div style={{
+          <div key={lastCalled} style={{
             fontSize: 54, fontWeight: 900,
             color: lastCalled ? 'white' : 'var(--text-muted)',
             lineHeight: 1, fontFamily: "'Nunito', sans-serif",
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            animation: lastCalled ? 'ballPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards' : 'none'
           }}>
             {lastCalled ? `${letter}-${lastCalled}` : '—'}
           </div>
         </div>
 
-        {/* Recent calls & Stats — bigger */}
+        {/* Recent calls — 10 numbers, no wrapping, fixed width to fit them exactly */}
         <div className="card" style={{
-          flex: 1, minWidth: 200, display: 'flex',
-          alignItems: 'center', padding: '8px 12px', gap: 12
+          width: 580, flexShrink: 0, display: 'flex',
+          alignItems: 'center', padding: '8px 12px', gap: 12,
+          boxSizing: 'border-box'
         }}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ fontSize: 15, color: 'var(--text-muted)', marginBottom: 5, fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Recent Calls</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {[...calledNumbers].reverse().slice(0, 15).map(n => (
+            <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Recent Calls</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', overflowX: 'hidden' }}>
+              {[...calledNumbers].reverse().slice(0, 10).map(n => (
                 <span key={n} style={{
                   background: COL_COLORS[Math.floor((n - 1) / 15)],
-                  color: 'white', borderRadius: '50%', width: 52, height: 52,
+                  color: 'white', borderRadius: '50%', width: 48, height: 48,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 24, fontWeight: 900, fontFamily: "'Nunito', sans-serif"
+                  fontSize: 22, fontWeight: 900, fontFamily: "'Nunito', sans-serif",
+                  flexShrink: 0
                 }}>{n}</span>
               ))}
-              {calledNumbers.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 15, fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>No numbers called yet</span>}
+              {calledNumbers.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 14, fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>No calls yet</span>}
             </div>
           </div>
+        </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, borderLeft: '2px solid #E0E0E0', paddingLeft: 14 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 36, fontWeight: 900, color: 'var(--orange)', fontFamily: "'Nunito', sans-serif" }}>{calledNumbers.length}</div>
-              <div style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Called</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 34, fontWeight: 900, color: 'var(--blue)', fontFamily: "'Nunito', sans-serif" }}>{75 - calledNumbers.length}</div>
-              <div style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Remaining</div>
-            </div>
-          </div>
+        {/* Stats & Progress Combined Card */}
+        <div className="card" style={{
+          flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column',
+          padding: '6px 8px', margin: 0, position: 'relative', border: '1px solid rgba(0,200,83,0.3)',
+          boxSizing: 'border-box', justifyContent: 'center', maxHeight: 124, overflowY: 'auto'
+        }}>
+          {showProgress ? (
+            <>
+              <button onClick={() => setShowProgress(false)} style={{
+                position: 'absolute', right: 6, top: 6, background: 'rgba(255,107,0,0.1)', border: '1px solid rgba(255,107,0,0.3)',
+                color: 'var(--orange)', cursor: 'pointer', fontSize: 11, fontWeight: 'bold', padding: '2px 6px', borderRadius: 4,
+                fontFamily: "'Inter', sans-serif"
+              }} title="Show game stats">📊 Stats</button>
+              
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>
+                📈 Progress
+              </div>
+              
+              {(() => {
+                const progressMap = { 1: [], 2: [] }
+                const registeredCards = cards.filter(c => registeredCardIds.includes(c.id))
+                registeredCards.forEach(card => {
+                  const minRemaining = getCardProgress(card.flat, calledSet)
+                  if (minRemaining === 1 || minRemaining === 2) {
+                    const cardNum = card.name.match(/\d+/)?.[0] || card.name
+                    progressMap[minRemaining].push(cardNum)
+                  }
+                })
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, justifyContent: 'center' }}>
+                    {/* 1 Away wrapping to full width */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, width: '100%' }}>
+                      <span style={{
+                        background: '#D50000', color: 'white', fontSize: 10, fontWeight: 850,
+                        padding: '2px 4px', borderRadius: 3, whiteSpace: 'nowrap', flexShrink: 0
+                      }}>1 AWAY</span>
+                      {progressMap[1].length > 0 ? (
+                        progressMap[1].map(num => (
+                          <span key={num} style={{ background: '#FFEBEE', color: '#D50000', padding: '1px 4px', borderRadius: 2, fontSize: 12, fontWeight: 800 }}>#{num}</span>
+                        ))
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 500 }}>None</span>
+                      )}
+                    </div>
+                    
+                    {/* 2 Away wrapping to full width */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, width: '100%' }}>
+                      <span style={{
+                        background: '#E65100', color: 'white', fontSize: 10, fontWeight: 850,
+                        padding: '2px 4px', borderRadius: 3, whiteSpace: 'nowrap', flexShrink: 0
+                      }}>2 AWAY</span>
+                      {progressMap[2].length > 0 ? (
+                        progressMap[2].map(num => (
+                          <span key={num} style={{ background: '#FFF3E0', color: '#E65100', padding: '1px 4px', borderRadius: 2, fontSize: 12, fontWeight: 800 }}>#{num}</span>
+                        ))
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 500 }}>None</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
+            </>
+          ) : (
+            <>
+              <button onClick={() => setShowProgress(true)} style={{
+                position: 'absolute', right: 6, top: 6, background: 'rgba(0,200,83,0.1)', border: '1px solid rgba(0,200,83,0.3)',
+                color: '#00C853', cursor: 'pointer', fontSize: 11, fontWeight: 'bold', padding: '2px 6px', borderRadius: 4,
+                fontFamily: "'Inter', sans-serif"
+              }} title="Show progress tracker">📈 Progress</button>
+              
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>
+                📊 Game Stats
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', flex: 1, marginTop: 4 }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--orange)', fontFamily: "'Nunito', sans-serif", lineHeight: 1.1 }}>{calledNumbers.length}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Called</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 30, fontWeight: 900, color: 'var(--blue)', fontFamily: "'Nunito', sans-serif", lineHeight: 1.1 }}>{75 - calledNumbers.length}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Remaining</div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Winner Prize — bigger circle */}
@@ -235,11 +347,14 @@ export default function Game() {
           flex: 1, display: 'flex', flexDirection: 'column'
         }}>
           <style>{`
+            @keyframes ballPop {
+              0% { transform: scale(0.5); opacity: 0; }
+              70% { transform: scale(1.12); }
+              100% { transform: scale(1); opacity: 1; }
+            }
             @keyframes lastCalledPulse {
-              0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(0,200,83,0.9); }
-              40%  { transform: scale(1.18); box-shadow: 0 0 0 8px rgba(0,200,83,0.3); }
-              70%  { transform: scale(1.10); box-shadow: 0 0 0 14px rgba(0,200,83,0.1); }
-              100% { transform: scale(1.13); box-shadow: 0 0 0 6px rgba(0,200,83,0.25); }
+              0%   { transform: scale(1); }
+              100% { transform: scale(1.12); }
             }
             @keyframes blinkYellowAnim {
               0%, 100% {
@@ -275,7 +390,7 @@ export default function Game() {
               display: flex;
               align-items: center;
               justify-content: center;
-              border-radius: 0;
+              border-radius: 10px;
               height: 100%;
               font-family: 'Nunito', sans-serif;
               font-weight: 900;
@@ -286,7 +401,7 @@ export default function Game() {
               user-select: none;
             }
             .bingo-cell-uncalled {
-              background: #2e2e2e;
+              background: #000;
               border: 2px solid #484848;
               color: #fff;
             }
@@ -298,7 +413,7 @@ export default function Game() {
               background: #00C853 !important;
               border: 2px solid #69F0AE !important;
               color: #fff !important;
-              animation: lastCalledPulse 0.8s ease-out forwards, lastCalledPulse 0.8s 0.8s ease-in-out infinite alternate;
+              animation: lastCalledPulse 0.6s ease-in-out infinite alternate;
               z-index: 2;
               position: relative;
             }
@@ -336,13 +451,14 @@ export default function Game() {
                         border: '2px solid transparent',
                         opacity: shuffleCell.visible ? 1 : 0.12,
                         transition: 'opacity 0.08s ease, background 0.08s ease',
-                        animation: 'none'
+                        animation: 'none',
+                        color: '#fff'
                       }
                     } else if (isLast) {
                       cellClass += 'bingo-cell-last'
                     } else if (called) {
                       cellClass += 'bingo-cell-called'
-                      extraStyle = { background: COL_COLORS[i], border: `2px solid ${COL_COLORS[i]}` }
+                      extraStyle = { background: COL_COLORS[i], border: `2px solid ${COL_COLORS[i]}`, color: '#fff' }
                     } else {
                       cellClass += 'bingo-cell-uncalled'
                     }
@@ -352,32 +468,7 @@ export default function Game() {
                         {shuffleCell
                           ? (shuffleCell.visible && shuffleCell.showNumber ? n : '')
                           : n}
-                        {isLast && (
-                          <>
-                            <div className="blink-yellow" style={{
-                              position: 'absolute',
-                              bottom: 4,
-                              left: 6,
-                              width: 8,
-                              height: 8,
-                              borderRadius: '50%',
-                              background: '#FFD700',
-                              boxShadow: '0 0 4px #FFD700',
-                              zIndex: 3
-                            }} />
-                            <div className="blink-red" style={{
-                              position: 'absolute',
-                              bottom: 4,
-                              right: 6,
-                              width: 8,
-                              height: 8,
-                              borderRadius: '50%',
-                              background: '#FF1744',
-                              boxShadow: '0 0 4px #FF1744',
-                              zIndex: 3
-                            }} />
-                          </>
-                        )}
+
                       </div>
                     )
                   })}
@@ -413,6 +504,8 @@ export default function Game() {
             }}>
             🏆 Check Winner
           </button>
+
+
 
           <button className="game-btn-shuffle" onClick={handleShuffle} disabled={shuffling || hasPlayed || !gameActive}
             style={{

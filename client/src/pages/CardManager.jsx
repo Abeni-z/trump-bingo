@@ -105,7 +105,7 @@ export default function CardManager() {
         {/* Actions Row */}
         <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center'}}>
           <button className="btn btn-blue" onClick={handlePrint}>🖨️ Print All Cards</button>
-          <button className="btn btn-red" onClick={() => { if(window.confirm('Remove all cards?')) clearAllCards() }}>
+          <button className="btn btn-red" onClick={() => { if(window.confirm('Are you sure you want to clear all cards?')) clearAllCards() }}>
             🗑️ Clear All
           </button>
           <span style={{marginLeft:'auto', fontWeight:800, color:'var(--orange)', fontFamily: "'Inter', 'Roboto', sans-serif"}}>{cards.length} cards total</span>
@@ -208,7 +208,7 @@ function EditableCardTile({ card, onRemove, onSave }) {
               </button>
             </>
           )}
-          <button onClick={e => { e.stopPropagation(); onRemove() }}
+          <button onClick={e => { e.stopPropagation(); if(window.confirm(`Delete ${card.name}?`)) onRemove() }}
             style={{background:'none', border:'none', color:'#F44336', cursor:'pointer', fontWeight:900, fontSize:18}}>×</button>
         </div>
       </div>

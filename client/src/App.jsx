@@ -85,6 +85,7 @@ function Nav() {
   const clearStoreData = useBingoStore(s => s.clearStoreData)
 
   function handleLogout() {
+    if (!window.confirm('Are you sure you want to logout?')) return
     apiLogout()
     clearStoreData().then(() => {
       navigate('/login')
