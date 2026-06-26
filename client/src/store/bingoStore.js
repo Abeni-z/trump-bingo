@@ -5,6 +5,7 @@ import {
   dbSaveSetting, dbGetSetting,
   dbGetBalance, dbSetBalance
 } from './db.js'
+import CARD_DATA from './defaultCardData.js'
 
 // Generate a valid bingo card: B(1-15) I(16-30) N(31-45) G(46-60) O(61-75)
 export function generateCard() {
@@ -57,6 +58,52 @@ export function checkWin(flat, called) {
   if (corners.every(i => hit[i])) patterns.push({ type: 'Four Corners', cells: corners })
 
   return patterns
+}
+
+// Deterministic seeded pseudo-random number generator
+function createDeterministicRandom(seed) {
+  let s = seed
+  return function() {
+    s = (s * 9301 + 49297) % 233280
+    return s / 233280
+  }
+}
+
+// Generate a valid bingo card using deterministic random
+function generateSeededCard(cardNumber) {
+  const rand = createDeterministicRandom(cardNumber)
+  const cols = [
+    [1,15],[16,30],[31,45],[46,60],[61,75]
+  ]
+  return cols.map(([ min, max ]) => {
+    const pool = Array.from({length: max-min+1}, (_,i) => i+min)
+    // Fisher-Yates shuffle with deterministic random
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1))
+      const tmp = pool[i]
+      pool[i] = pool[j]
+      pool[j] = tmp
+    }
+    return pool.slice(0,5)
+  })
+}
+
+export function generateCardForNumber(n) {
+  return CARD_DATA[n] || generateSeededCard(n)
+}
+
+export function generateDefault149Cards() {
+  const list = []
+  for (let i = 1; i <= 149; i++) {
+    const cols = CARD_DATA[i] || generateSeededCard(i)
+    list.push({
+      id: 'card_' + i + '_default',
+      name: 'Card ' + i,
+      columns: cols,
+      flat: cardToFlat(cols)
+    })
+  }
+  return list
 }
 
 let _cardIdCounter = 0
@@ -112,7 +159,7 @@ export const useBingoStore = create((set, get) => ({
   // --- Load persisted data from IndexedDB ---
   loadFromDB: async () => {
     try {
-      const [cards, sessions, lang, voice, speed, bet, pct, bal] = await Promise.all([
+      const [cards, sessions, lang, voice, speed, bet, pct, bal, seeded] = await Promise.all([
         dbGetAllCards(),
         dbGetAllSessions(),
         dbGetSetting('language'),
@@ -120,8 +167,19 @@ export const useBingoStore = create((set, get) => ({
         dbGetSetting('callSpeed'),
         dbGetSetting('betAmount'),
         dbGetSetting('housePercent'),
-        dbGetBalance()
+        dbGetBalance(),
+        dbGetSetting('defaultCardsSeeded')
       ])
+
+      // Seed 149 default cards whenever no cards exist
+      let finalCards = cards || []
+      if (finalCards.length === 0) {
+        finalCards = generateDefault149Cards()
+        for (const card of finalCards) {
+          await dbSaveCard(card)
+        }
+        await dbSaveSetting('defaultCardsSeeded', true)
+      }
 
       // Clean old reports (>45 days old)
       const cutoff = Date.now() - 45 * 24 * 60 * 60 * 1000
@@ -159,15 +217,15 @@ export const useBingoStore = create((set, get) => ({
       }
 
       // Set counter past existing IDs
-      if (cards.length) {
-        const maxNum = cards.reduce((m, c) => {
-          const match = c.id.match(/card_(\d+)_/)
+      if (finalCards.length) {
+        const maxNum = finalCards.reduce((m, c) => {
+          const match = c.id.match(/card_(\d+)/)
           return match ? Math.max(m, parseInt(match[1])) : m
         }, 0)
         _cardIdCounter = maxNum
       }
       set({
-        cards: cards || [],
+        cards: finalCards,
         sessions: validSessions.sort((a, b) => new Date(b.date) - new Date(a.date)),
         language: lang || 'en',
         voiceEnabled: voice !== undefined ? voice : true,
