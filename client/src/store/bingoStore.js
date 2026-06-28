@@ -179,6 +179,19 @@ export const useBingoStore = create((set, get) => ({
           await dbSaveCard(card)
         }
         await dbSaveSetting('defaultCardsSeeded', true)
+      } else {
+        // If cards already exist, ensure Card 4 is updated to the new duplicate numbers
+        const card4 = finalCards.find(c => c.id === 'card_4_default')
+        if (card4) {
+          const gColStr = JSON.stringify(card4.columns[3])
+          const targetGColStr = JSON.stringify([47, 50, 52, 57, 50])
+          if (gColStr !== targetGColStr) {
+            console.log("Updating Card 4 to have requested duplicate G column numbers")
+            card4.columns[3] = [47, 50, 52, 57, 50]
+            card4.flat = cardToFlat(card4.columns)
+            await dbSaveCard(card4)
+          }
+        }
       }
 
       // Clean old reports (>45 days old)
@@ -456,5 +469,12 @@ export const useBingoStore = create((set, get) => ({
   clearSessions: () => {
     set({ sessions: [] })
     dbClearSessions()
+  },
+
+  shuffleActiveDeck: () => {
+    set({
+      callDeck: shuffleCallDeck(),
+      callDeckIndex: 0
+    })
   },
 }))

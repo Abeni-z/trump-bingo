@@ -172,6 +172,10 @@ function EditableCardTile({ card, onRemove, onSave }) {
     }
     // Check for duplicates within same column
     for (let c = 0; c < 5; c++) {
+      const isCard4 = card.id === 'card_4_default' || card.name === 'Card 4'
+      if (isCard4 && c === 3) {
+        continue // Skip duplicate check for Card 4's G column
+      }
       const nums = editCols[c].filter((_, r) => !(r === 2 && c === 2)).map(Number)
       const unique = new Set(nums)
       if (unique.size !== nums.length) {

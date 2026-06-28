@@ -56,7 +56,7 @@ function getCardProgress(flatCard, calledSet) {
 
 export default function Game() {
   const navigate = useNavigate()
-  const { language, voiceEnabled, callSpeed, setCallSpeed, betAmount, housePercent, houseBetMode, calledNumbers, lastCalled, gameActive, callRandom, endGame, cards, registeredCardIds, lockedCardIds, lockCard, resetLocked } = useBingoStore()
+  const { language, voiceEnabled, callSpeed, setCallSpeed, betAmount, housePercent, houseBetMode, calledNumbers, lastCalled, gameActive, callRandom, endGame, cards, registeredCardIds, lockedCardIds, lockCard, resetLocked, shuffleActiveDeck } = useBingoStore()
   const [autoMode, setAutoMode] = useState(false)
   const [showWinner, setShowWinner] = useState(false)
   const [shuffling, setShuffling] = useState(false)
@@ -134,6 +134,7 @@ export default function Game() {
   function handleShuffle() {
     if (shuffling || hasPlayed) return
     setShuffling(true)
+    shuffleActiveDeck()
     if (shuffleSoundStopRef.current) shuffleSoundStopRef.current()
     
     const audio = new Audio('/voices/shuffle.mp3')
@@ -191,14 +192,14 @@ export default function Game() {
           width: 140, height: 140, borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          border: lastCalled ? '6px solid #00C853' : '6px solid #484848',
+          border: lastCalled ? '6px solid #000' : '6px solid #484848',
           boxSizing: 'border-box',
           flexShrink: 0,
           padding: 0
         }}>
           <div key={lastCalled} style={{
             fontSize: 54, fontWeight: 900,
-            color: lastCalled ? 'white' : 'var(--text-muted)',
+            color: lastCalled ? '#000' : 'var(--text-muted)',
             lineHeight: 1, fontFamily: "'Nunito', sans-serif",
             whiteSpace: 'nowrap',
             animation: lastCalled ? 'ballPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards' : 'none'
@@ -219,7 +220,7 @@ export default function Game() {
               {[...calledNumbers].reverse().slice(0, 10).map(n => (
                 <span key={n} style={{
                   background: COL_COLORS[Math.floor((n - 1) / 15)],
-                  color: 'white', borderRadius: '50%', width: 48, height: 48,
+                  color: '#000', borderRadius: '50%', width: 48, height: 48,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 22, fontWeight: 900, fontFamily: "'Nunito', sans-serif",
                   flexShrink: 0
@@ -230,22 +231,24 @@ export default function Game() {
           </div>
         </div>
 
-        {/* Stats & Progress Combined Card */}
+        {/* Stats & Progress Combined Card — height matched to Recent Calls */}
         <div className="card" style={{
           flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column',
-          padding: '6px 8px', margin: 0, position: 'relative', border: '1px solid rgba(0,200,83,0.3)',
-          boxSizing: 'border-box', justifyContent: 'center', maxHeight: 124, overflowY: 'auto'
+          padding: '8px 12px', margin: 0, position: 'relative',
+          border: '1px solid rgba(0,200,83,0.25)',
+          boxSizing: 'border-box', justifyContent: 'center',
+          overflowY: 'auto'
         }}>
           {showProgress ? (
             <>
               <button onClick={() => setShowProgress(false)} style={{
-                position: 'absolute', right: 6, top: 6, background: 'rgba(255,107,0,0.1)', border: '1px solid rgba(255,107,0,0.3)',
-                color: 'var(--orange)', cursor: 'pointer', fontSize: 11, fontWeight: 'bold', padding: '2px 6px', borderRadius: 4,
-                fontFamily: "'Inter', sans-serif"
+                position: 'absolute', right: 8, top: 8, background: 'rgba(255,107,0,0.08)', border: '1px solid rgba(255,107,0,0.2)',
+                color: '#E65100', cursor: 'pointer', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                fontFamily: "'Inter', sans-serif", transition: 'all 0.15s'
               }} title="Show game stats">📊 Stats</button>
               
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>
-                📈 Progress
+              <div style={{ fontSize: 13, color: '#2E7D32', marginBottom: 4, fontWeight: 800, fontFamily: "'Inter', sans-serif", letterSpacing: '0.3px' }}>
+                📈 Live Progress
               </div>
               
               {(() => {
@@ -260,34 +263,36 @@ export default function Game() {
                 })
 
                 return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, justifyContent: 'center' }}>
-                    {/* 1 Away wrapping to full width */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, width: '100%' }}>
-                      <span style={{
-                        background: '#D50000', color: 'white', fontSize: 10, fontWeight: 850,
-                        padding: '2px 4px', borderRadius: 3, whiteSpace: 'nowrap', flexShrink: 0
-                      }}>1 AWAY</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, justifyContent: 'center' }}>
+                    {/* 1 Away */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, width: '100%' }}>
                       {progressMap[1].length > 0 ? (
                         progressMap[1].map(num => (
-                          <span key={num} style={{ background: '#FFEBEE', color: '#D50000', padding: '1px 4px', borderRadius: 2, fontSize: 12, fontWeight: 800 }}>#{num}</span>
+                          <span key={num} style={{
+                            background: 'greenyellow', color: '#000', padding: '2px 6px', borderRadius: '6px',
+                            fontSize: 11, fontWeight: 900, fontFamily: "'Nunito', sans-serif",
+                            border: '1px solid rgba(0,0,0,0.12)'
+                          }}>{num}</span>
                         ))
                       ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 500 }}>None</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 500, fontStyle: 'italic' }}>None</span>
                       )}
                     </div>
                     
-                    {/* 2 Away wrapping to full width */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, width: '100%' }}>
-                      <span style={{
-                        background: '#E65100', color: 'white', fontSize: 10, fontWeight: 850,
-                        padding: '2px 4px', borderRadius: 3, whiteSpace: 'nowrap', flexShrink: 0
-                      }}>2 AWAY</span>
+                    <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.08)', margin: '2px 0', width: '100%' }} />
+                    
+                    {/* 2 Away */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, width: '100%' }}>
                       {progressMap[2].length > 0 ? (
                         progressMap[2].map(num => (
-                          <span key={num} style={{ background: '#FFF3E0', color: '#E65100', padding: '1px 4px', borderRadius: 2, fontSize: 12, fontWeight: 800 }}>#{num}</span>
+                          <span key={num} style={{
+                            background: 'orange', color: '#000', padding: '2px 6px', borderRadius: '6px',
+                            fontSize: 11, fontWeight: 900, fontFamily: "'Nunito', sans-serif",
+                            border: '1px solid rgba(0,0,0,0.12)'
+                          }}>{num}</span>
                         ))
                       ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 500 }}>None</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 500, fontStyle: 'italic' }}>None</span>
                       )}
                     </div>
                   </div>
@@ -297,22 +302,23 @@ export default function Game() {
           ) : (
             <>
               <button onClick={() => setShowProgress(true)} style={{
-                position: 'absolute', right: 6, top: 6, background: 'rgba(0,200,83,0.1)', border: '1px solid rgba(0,200,83,0.3)',
-                color: '#00C853', cursor: 'pointer', fontSize: 11, fontWeight: 'bold', padding: '2px 6px', borderRadius: 4,
-                fontFamily: "'Inter', sans-serif"
+                position: 'absolute', right: 8, top: 8, background: 'rgba(0,200,83,0.08)', border: '1px solid rgba(0,200,83,0.2)',
+                color: '#2E7D32', cursor: 'pointer', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                fontFamily: "'Inter', sans-serif", transition: 'all 0.15s'
               }} title="Show progress tracker">📈 Progress</button>
               
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 800, fontFamily: "'Inter', sans-serif", letterSpacing: '0.3px' }}>
                 📊 Game Stats
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', flex: 1, marginTop: 4 }}>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--orange)', fontFamily: "'Nunito', sans-serif", lineHeight: 1.1 }}>{calledNumbers.length}</div>
+                  <div style={{ fontSize: 32, fontWeight: 900, color: '#E65100', fontFamily: "'Nunito', sans-serif", lineHeight: 1.1 }}>{calledNumbers.length}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Called</div>
                 </div>
+                <div style={{ width: 1, height: 32, background: 'rgba(0,0,0,0.08)' }} />
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 30, fontWeight: 900, color: 'var(--blue)', fontFamily: "'Nunito', sans-serif", lineHeight: 1.1 }}>{75 - calledNumbers.length}</div>
+                  <div style={{ fontSize: 32, fontWeight: 900, color: '#1565C0', fontFamily: "'Nunito', sans-serif", lineHeight: 1.1 }}>{75 - calledNumbers.length}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 800, fontFamily: "'Inter', sans-serif" }}>Remaining</div>
                 </div>
               </div>
@@ -407,12 +413,12 @@ export default function Game() {
             }
             .bingo-cell-called {
               border: 2px solid transparent;
-              color: #fff;
+              color: #000;
             }
             .bingo-cell-last {
               background: #00C853 !important;
               border: 2px solid #69F0AE !important;
-              color: #fff !important;
+              color: #000 !important;
               animation: lastCalledPulse 0.6s ease-in-out infinite alternate;
               z-index: 2;
               position: relative;
@@ -458,7 +464,7 @@ export default function Game() {
                       cellClass += 'bingo-cell-last'
                     } else if (called) {
                       cellClass += 'bingo-cell-called'
-                      extraStyle = { background: COL_COLORS[i], border: `2px solid ${COL_COLORS[i]}`, color: '#fff' }
+                      extraStyle = { background: COL_COLORS[i], border: `2px solid ${COL_COLORS[i]}`, color: '#000' }
                     } else {
                       cellClass += 'bingo-cell-uncalled'
                     }
@@ -556,19 +562,25 @@ export default function Game() {
           alignItems: 'center',
           gap: 16,
           marginLeft: 'auto',
+          marginRight: 'auto',
           flexShrink: 0,
           background: 'transparent'
         }}>
           <span style={{
-            fontFamily: "'Fredoka One', cursive",
-            fontSize: 16,
-            color: '#2196F3',
-            background: 'transparent',
-            fontWeight: 800,
+            fontFamily: "'Bebas Neue', 'Fredoka One', cursive",
+            fontSize: 28,
+            background: 'linear-gradient(135deg, #FF6B00, #FFD700, #00C853)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            fontWeight: 900,
             whiteSpace: 'nowrap',
-            lineHeight: 1
+            lineHeight: 1,
+            letterSpacing: '3px',
+            textTransform: 'uppercase',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
           }}>
-            TRUMP bingo
+            TRUMP BINGO
           </span>
           <button className="game-action-bar-end" style={{ marginLeft: 0 }} onClick={() => {
             if (autoRef.current) { clearTimeout(autoRef.current); autoRef.current = null }
